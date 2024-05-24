@@ -738,7 +738,7 @@
 
 <h1 id="relational-dwh-using-custom-lossy-schema">Relational DWH using custom "lossy" schema</h1>
 <h2 id="overview">Overview</h2>
-<p>In this tutorial you will learn how to configure and deploy OHS FHIR Data Pipes to transform FHIR data into a Postgres Relational SQL data-warehouse using FHIR ViewDefinition Resources to define the "lossy" schema.</p>
+<p>In this tutorial you will learn how to configure and deploy FHIR Data Pipes to transform FHIR data into a Postgre Relational SQL data-warehouse using FHIR ViewDefinition Resources to define the custom <em>"lossy"</em> schema.</p>
 <h2 id="requirements">Requirements</h2>
 <ul>
 <li>A source <a href="https://hapifhir.io/">HAPI FHIR server</a> configured to <a href="https://github.com/hapifhir/hapi-fhir-jpaserver-starter#postgresql-configuration">use Postgres as its database</a><ul>
@@ -769,8 +769,9 @@
 <li>Edit the values in this file to match the database for the FHIR server you are connecting to.</li>
 </ol>
 <h2 id="set-the-sinkdbconfigpath">Set the sinkDbConfigPath</h2>
+<p>The sinkDb refers to the target database that will become the data warehouse.</p>
 <p>With the default config, you will create both Parquet files (under <code>dwhRootPrefix</code>) and flattened views in the database configured by <code>sinkDbConfigPath</code> <a href="https://github.com/google/fhir-data-pipes/blob/27d691e91d0fe6ef4c9624acba4e68bca145c973/docker/config/application.yaml#L42">here</a>. </p>
-<p>Make sure to create the DB referenced in the connection config file (default is a postgreSQL db named 'views'). You can do this with the following SQL query:</p>
+<p>Make sure to create the database referenced in the connection config file (default is a postgreSQL db named 'views'). You can do this with the following SQL query:</p>
 <p><div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">DATABASE</span><span class="w"> </span><span class="n">views</span><span class="p">;</span>
 </code></pre></div>
 which you can run in Postgres like this:
@@ -878,23 +879,28 @@ which you can run in Postgres like this:
 </table>
 <h2 id="querying-the-database">Querying the database</h2>
 <p>Let's do some basic quality checks to make sure the data is uploaded properly (note
-table names are case insensitive):</p>
-<p><div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">SELECT</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">Patient</span><span class="p">;</span>
+table names are case insensitive).</p>
+<p>NOTES:</p>
+<ul>
+<li>This assumes that the data loaded is from <a href="https://github.com/google/fhir-data-pipes/synthea-hiv/sample_data">this synthetic data set</a></li>
+<li>You will see that the number of patients and observations is higher than the count in the FHIR Server. This is due to the flattening</li>
+</ul>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">SELECT</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">patient_flat</span><span class="p">;</span>
 </code></pre></div>
-We should have exactly 79 patients:
+We should have exactly 114 patients:
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>+-----------+
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>| count(0)  |
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>| count     |
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>+-----------+
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>| 79        |
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>| 114       |
 <a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>+-----------+
 </code></pre></div></p>
 <p>Doing the same for observations:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">SELECT</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">Observation</span><span class="p">;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">SELECT</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">observation_flat</span><span class="p">;</span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>+-----------+
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>| count(0)  |
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>| count  |
 <a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>+-----------+
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>| 17279     |
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>| 18343     |
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>+-----------+
 </code></pre></div></p>
 <h2 id="whats-next">What's next</h2>
